@@ -96,6 +96,25 @@
             display: flex;
             gap: 10px;
             margin-bottom: 15px;
+            flex-wrap: wrap;
+        }
+
+        .btn-export,
+        .btn-import {
+            background-color: #48bb78;
+            color: white;
+            border: none;
+            padding: 10px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: background-color 0.2s;
+        }
+
+        .btn-export:hover,
+        .btn-import:hover {
+            background-color: #38a169;
         }
 
         button {
@@ -234,6 +253,9 @@
             <div class="button-group">
                 <button class="btn-add" onclick="addMember()">+ Ajouter un Membre</button>
                 <button class="btn-calculate" onclick="calculate()">Calculer la Distribution</button>
+                <button class="btn-export" onclick="exportToCSV()">⬇️ Exporter CSV</button>
+                <button class="btn-import" onclick="document.getElementById('fileInput').click()">⬆️ Importer CSV</button>
+                <input type="file" id="fileInput" accept=".csv" style="display: none;" onchange="importFromCSV(event)">
             </div>
             <div class="error" id="error"></div>
             <table class="members-table">
@@ -453,6 +475,108 @@
             });
 
             resultsSection.classList.add('show');
+        }
+
+        function exportToCSV() {
+            const members = getMembers();
+            if (members.length === 0) {
+                alert('Aucun membre à exporter');
+                return;
+            }
+            
+            // CSV header
+            let csv = 'Nom,Revenu Net (€),Économies (€),Montant Versé (€)\n';
+            
+            // CSV rows
+            members.forEach(member => {
+                const escapedName = '"' + (member.name || '').replace(/"/g, '""') + '"';
+                csv += `${escapedName},${member.revenue},${member.savings},${member.actualAmount}\n`;
+            });
+            
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `mutuelle_${new Date().toISOString().split('T')[0]}.csv`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+        }
+
+        function importFromCSV(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const csv = e.target.result;
+                    const lines = csv.trim().split('\n');
+                    
+                    if (lines.length < 2) {
+                        alert('Fichier CSV vide ou invalide');
+                        return;
+                    }
+                    
+                    // Skip header line
+                    const dataLines = lines.slice(1);
+                    const members = [];
+                    
+                    dataLines.forEach(line => {
+                        if (line.trim() === '') return;
+                        
+                        // Parse CSV line (handle quoted fields)
+                        const regex = /(?:"([^"]*(?:""[^"]*)*)"|([^,]*))/g;
+                        const fields = [];
+                        let match;
+                        
+                        while ((match = regex.exec(line)) !== null) {
+                            const field = match[1] !== undefined ? match[1].replace(/""/g, '"') : match[2];
+                            fields.push(field);
+                        }
+                        
+                        if (fields.length >= 4) {
+                            members.push({
+                                name: fields[0] || '',
+                                revenue: parseFloat(fields[1]) || 0,
+                                savings: parseFloat(fields[2]) || 0,
+                                actualAmount: parseFloat(fields[3]) || 0
+                            });
+                        }
+                    });
+                    
+                    if (members.length === 0) {
+                        alert('Aucune donnée de membre trouvée');
+                        return;
+                    }
+                    
+                    // Clear existing members
+                    document.getElementById('membersBody').innerHTML = '';
+                    
+                    // Add imported members
+                    members.forEach(member => {
+                        addMember();
+                        const rows = document.querySelectorAll('#membersBody tr');
+                        const lastRow = rows[rows.length - 1];
+                        
+                        lastRow.querySelector('.name').value = member.name;
+                        lastRow.querySelector('.revenue').value = member.revenue;
+                        lastRow.querySelector('.savings').value = member.savings;
+                        lastRow.querySelector('.actualAmount').value = member.actualAmount;
+                    });
+                    
+                    updateExpectedAmounts();
+                    alert(`${members.length} membre(s) importé(s) avec succès`);
+                } catch (error) {
+                    alert('Erreur lors de la lecture du fichier: ' + error.message);
+                }
+            };
+            reader.readAsText(file);
+            
+            // Reset file input
+            event.target.value = '';
         }
 
 
