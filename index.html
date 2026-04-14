@@ -462,14 +462,14 @@
             sortedAllocations.forEach(a => {
                 const row = document.createElement('tr');
                 const eligibleClass = a.isEligible ? 'eligible' : 'ineligible';
-                const eligibleText = a.isEligible ? '<span style="color: #48bb78; font-weight: 600;">✓ Oui</span>' : '<span style="color: #f56565; font-weight: 600;">✗ Non (économies ≥ 2000€)</span>';
+                const eligibleText = a.isEligible ? '<span style="color: #48bb78; font-weight: 400;">✓ Oui</span>' : '<span style="color: #f56565; font-weight: 400;">✗ Non (économies ≥ 2000€)</span>';
                 row.innerHTML = `
                     <td>${a.name}</td>
                     <td class="amount">${a.revenue.toFixed(2)} €</td>
                     <td class="amount">${a.savings.toFixed(2)} €</td>
                     <td>${eligibleText}</td>
-                    <td class="amount">${a.allocation.toFixed(2)} €</td>
-                    <td class="amount"><strong>${(a.revenue + a.allocation).toFixed(2)} €</strong></td>
+                    <td class="amount"><strong>${a.allocation.toFixed(2)} €</strong></td>
+                    <td class="amount">${(a.revenue + a.allocation).toFixed(2)} €</td>
                 `;
                 resultsBody.appendChild(row);
             });
@@ -485,12 +485,12 @@
             }
             
             // CSV header
-            let csv = 'Nom,Revenu Net (€),Économies (€),Montant Versé (€)\n';
+            let csv = 'Nom,Revenu Net (€),Économies (€)\n';
             
             // CSV rows
             members.forEach(member => {
                 const escapedName = '"' + (member.name || '').replace(/"/g, '""') + '"';
-                csv += `${escapedName},${member.revenue},${member.savings},${member.actualAmount}\n`;
+                csv += `${escapedName},${member.revenue},${member.savings}\n`;
             });
             
             const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
@@ -503,6 +503,36 @@
             link.click();
             document.body.removeChild(link);
             URL.revokeObjectURL(url);
+        }
+
+        function parseCSVLine(line) {
+            const result = [];
+            let current = '';
+            let inQuotes = false;
+            
+            for (let i = 0; i < line.length; i++) {
+                const char = line[i];
+                
+                if (char === '"') {
+                    if (inQuotes && line[i + 1] === '"') {
+                        // Escaped quote
+                        current += '"';
+                        i++; // Skip next quote
+                    } else {
+                        // Toggle quote state
+                        inQuotes = !inQuotes;
+                    }
+                } else if (char === ',' && !inQuotes) {
+                    // Field separator
+                    result.push(current);
+                    current = '';
+                } else {
+                    current += char;
+                }
+            }
+            
+            result.push(current); // Add last field
+            return result;
         }
 
         function importFromCSV(event) {
@@ -527,22 +557,14 @@
                     dataLines.forEach(line => {
                         if (line.trim() === '') return;
                         
-                        // Parse CSV line (handle quoted fields)
-                        const regex = /(?:"([^"]*(?:""[^"]*)*)"|([^,]*))/g;
-                        const fields = [];
-                        let match;
+                        const fields = parseCSVLine(line);
                         
-                        while ((match = regex.exec(line)) !== null) {
-                            const field = match[1] !== undefined ? match[1].replace(/""/g, '"') : match[2];
-                            fields.push(field);
-                        }
-                        
-                        if (fields.length >= 4) {
+                        if (fields.length >= 3) {
                             members.push({
                                 name: fields[0] || '',
                                 revenue: parseFloat(fields[1]) || 0,
                                 savings: parseFloat(fields[2]) || 0,
-                                actualAmount: parseFloat(fields[3]) || 0
+                                actualAmount: 0
                             });
                         }
                     });
