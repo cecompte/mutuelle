@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Calculatrice de Redistribution d'Argent</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+            padding: 30px;
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 28px;
+        }
+
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 14px;
+        }
+
+        .section {
+            margin-bottom: 30px;
+        }
+
+        .section-title {
+            color: #333;
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 15px;
+            border-bottom: 2px solid #667eea;
+            padding-bottom: 10px;
+        }
+
+        .members-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 15px;
+        }
+
+        th {
+            background-color: #f5f5f5;
+            padding: 12px;
+            text-align: left;
+            font-weight: 600;
+            color: #333;
+            border: 1px solid #ddd;
+        }
+
+        td {
+            padding: 12px;
+            border: 1px solid #ddd;
+        }
+
+        tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+
+        input[type="text"],
+        input[type="number"] {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+
+        input[type="text"]:focus,
+        input[type="number"]:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .button-group {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        button {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .btn-add {
+            background-color: #667eea;
+            color: white;
+        }
+
+        .btn-add:hover {
+            background-color: #5568d3;
+        }
+
+        .btn-calculate {
+            background-color: #48bb78;
+            color: white;
+        }
+
+        .btn-calculate:hover {
+            background-color: #38a169;
+        }
+
+        .btn-remove {
+            background-color: #f56565;
+            color: white;
+            padding: 8px 12px;
+            font-size: 12px;
+        }
+
+        .btn-remove:hover {
+            background-color: #e53e3e;
+        }
+
+        .btn-export {
+            background-color: #ed8936;
+            color: white;
+        }
+
+        .btn-export:hover {
+            background-color: #dd6b20;
+        }
+
+        .results {
+            background-color: #f0f4ff;
+            border-left: 4px solid #667eea;
+            padding: 20px;
+            border-radius: 4px;
+            margin-bottom: 20px;
+            display: none;
+        }
+
+        .results.show {
+            display: block;
+        }
+
+        .result-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid #e0e7ff;
+        }
+
+        .result-item:last-child {
+            border-bottom: none;
+        }
+
+        .result-label {
+            font-weight: 600;
+            color: #333;
+        }
+
+        .result-value {
+            color: #667eea;
+            font-weight: 600;
+        }
+
+        .results-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+
+        .results-table th {
+            background-color: #667eea;
+            color: white;
+        }
+
+        .results-table td {
+            padding: 12px;
+            border: 1px solid #ddd;
+        }
+
+        .results-table tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+
+        .amount {
+            text-align: right;
+            font-weight: 500;
+        }
+
+        .eligible {
+            color: #48bb78;
+        }
+
+        .ineligible {
+            color: #f56565;
+        }
+
+        .error {
+            color: #f56565;
+            font-size: 14px;
+            display: none;
+        }
+
+        .error.show {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>💰 Calculatrice de la Mutuelle</h1>
+        <p class="subtitle">Entrer les données des membres, et la calculatrice calculera la distribution</p>
+
+        <div class="section">
+            <h2 class="section-title">Données des Membres</h2>
+            <div class="button-group">
+                <button class="btn-add" onclick="addMember()">+ Ajouter un Membre</button>
+                <button class="btn-calculate" onclick="calculate()">Calculer la Distribution</button>
+            </div>
+            <div class="error" id="error"></div>
+            <table class="members-table">
+                <thead>
+                    <tr>
+                        <th>Nom</th>
+                        <th>Revenu Net (€)</th>
+                        <th>Économies (€)</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody id="membersBody">
+                </tbody>
+            </table>
+        </div>
+
+        <div class="section results" id="resultsSection">
+            <h2 class="section-title">Résultats du Calcul</h2>
+            <div id="resultsSummary"></div>
+            <table class="results-table">
+                <thead>
+                    <tr>
+                        <th>Nom</th>
+                        <th>Revenu Net</th>
+                        <th>Économies</th>
+                        <th>Éligible</th>
+                        <th>Montant à distribuer</th>
+                        <th>Solde Final</th>
+                    </tr>
+                </thead>
+                <tbody id="resultsBody">
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        // Initialize with one empty member row
+        document.addEventListener('DOMContentLoaded', function() {
+            addMember();
+        });
+
+        function addMember() {
+            const tbody = document.getElementById('membersBody');
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td><input type="text" class="name" placeholder="Nom du membre"></td>
+                <td><input type="number" class="revenue" placeholder="0" min="0" step="0.01"></td>
+                <td><input type="number" class="savings" placeholder="0" min="0" step="0.01"></td>
+                <td><button class="btn-remove" onclick="removeMember(this)">Supprimer</button></td>
+            `;
+            tbody.appendChild(row);
+        }
+
+        function removeMember(btn) {
+            btn.parentElement.parentElement.remove();
+        }
+
+        function getMembers() {
+            const rows = document.querySelectorAll('#membersBody tr');
+            const members = [];
+            rows.forEach(row => {
+                const name = row.querySelector('.name').value.trim();
+                const revenue = parseFloat(row.querySelector('.revenue').value) || 0;
+                const savings = parseFloat(row.querySelector('.savings').value) || 0;
+
+                if (name) {
+                    members.push({ name, revenue, savings });
+                }
+            });
+            return members;
+        }
+
+        function calculatePool(members) {
+            const totalRevenue = members.reduce((sum, m) => sum + m.revenue, 0);
+            const totalSavings = members.reduce((sum, m) => sum + m.savings, 0);
+            return 0.005 * totalRevenue + 0.0005 * totalSavings;
+        }
+
+        function calculate() {
+            const errorDiv = document.getElementById('error');
+            errorDiv.classList.remove('show');
+
+            // Get and validate members
+            const members = getMembers();
+            if (members.length === 0) {
+                errorDiv.textContent = 'Ajouter au moins un membre';
+                errorDiv.classList.add('show');
+                return;
+            }
+
+            // Calculate pool
+            const pool = calculatePool(members);
+
+            // Filter eligible members (savings < 2000)
+            const eligible = members.filter(m => m.savings < 2000);
+
+            if (eligible.length === 0) {
+                errorDiv.textContent = 'Aucun membre éligible (tous ont des économies >= 2000)';
+                errorDiv.classList.add('show');
+                return;
+            }
+
+            // Sort eligible by revenue (ascending)
+            eligible.sort((a, b) => a.revenue - b.revenue);
+
+            // Water-filling algorithm to find target revenue
+            let target = 0;
+            let amountUsedSoFar = 0;
+
+            for (let i = 0; i < eligible.length; i++) {
+                // Sum of first i+1 members' revenues
+                const sumUpToI = eligible.slice(0, i + 1).reduce((sum, m) => sum + m.revenue, 0);
+
+                // Next member's revenue (or end if last)
+                const count = i + 1;
+                
+                if (i === eligible.length - 1) {
+                    // Last member: use entire pool for final distribution
+                    target = (pool + sumUpToI) / count;
+                    break;
+                }
+                
+                const nextRevenue = eligible[i + 1].revenue;
+                // Cost to bring first i+1 members up to next level
+                const costToNext = count * nextRevenue - sumUpToI;
+
+                if (amountUsedSoFar + costToNext <= pool) {
+                    // We can afford to reach this level
+                    amountUsedSoFar += costToNext;
+                } else {
+                    // Pool runs out before reaching next level
+                    // Use all remaining pool for this group
+                    target = (pool + sumUpToI) / count;
+                    break;
+                }
+            }
+
+            // Calculate allocations
+            const allocations = members.map(m => {
+                const isEligible = m.savings < 2000;
+                const allocation = isEligible ? Math.max(0, target - m.revenue) : 0;
+                return {
+                    ...m,
+                    isEligible,
+                    allocation,
+                    finalBalance: m.revenue + allocation
+                };
+            });
+
+            // Display results
+            displayResults(allocations, pool, target);
+        }
+
+        function displayResults(allocations, pool, target) {
+            const resultsSection = document.getElementById('resultsSection');
+            const resultsSummary = document.getElementById('resultsSummary');
+            const resultsBody = document.getElementById('resultsBody');
+
+            // Summary
+            resultsSummary.innerHTML = `
+                <div class="result-item">
+                    <span class="result-label">Montant Total Disponible:</span>
+                    <span class="result-value">${pool.toFixed(2)} €</span>
+                </div>
+                <div class="result-item">
+                    <span class="result-label">Revenu Minimum Cible:</span>
+                    <span class="result-value">${target.toFixed(2)} €</span>
+                </div>
+                <div class="result-item">
+                    <span class="result-label">Total Distribué:</span>
+                    <span class="result-value">${allocations.reduce((sum, a) => sum + a.allocation, 0).toFixed(2)} €</span>
+                </div>
+            `;
+
+            // Results table
+            resultsBody.innerHTML = '';
+            allocations.forEach(a => {
+                const row = document.createElement('tr');
+                const eligibleClass = a.isEligible ? 'éligible' : 'inéligible';
+                const eligibleText = a.isEligible ? '✓ Oui' : '✗ Non (économies ≥ 2000€)';
+                row.innerHTML = `
+                    <td>${a.name}</td>
+                    <td class="amount">${a.revenue.toFixed(2)} €</td>
+                    <td class="amount">${a.savings.toFixed(2)} €</td>
+                    <td class="${eligibleClass}">${eligibleText}</td>
+                    <td class="amount">${a.allocation.toFixed(2)} €</td>
+                    <td class="amount"><strong>${a.finalBalance.toFixed(2)} €</strong></td>
+                `;
+                resultsBody.appendChild(row);
+            });
+
+            resultsSection.classList.add('show');
+        }
+
+
+    </script>
+</body>
+</html>
